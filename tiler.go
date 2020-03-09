@@ -2,15 +2,15 @@ package main
 
 import (
 	"flag"
-	cloud "github.com/goblimey/tiler/point_cloud"
 	"image"
 	"image/color"
 	"image/png"
 	"log"
 	"os"
+	"github.com/goblimey/tiler/esri"
 )
 
-var filename string // The point cloud file to display.
+var filename string // The file to display.
 var output string   // The .png results file.
 var ceiling64 float64 // parameter - the maximum height expected.
 var ceiling float32	// ceiling as a float32
@@ -28,8 +28,8 @@ var minShade uint8 = 0
 var minShadeSet = false
 
 func init() {
-	flag.StringVar(&filename, "input", "", "point cloud data file")
-	flag.StringVar(&filename, "i", "", "point cloud data file")
+	flag.StringVar(&filename, "input", "", "data file")
+	flag.StringVar(&filename, "i", "", "data file")
 	flag.StringVar(&output, "output", "", ".png results file")
 	flag.StringVar(&output, "o", "", ".png results file")
 	flag.Float64Var(&ceiling64, "ceiling", 0.0, "maximum height expected")
@@ -72,8 +72,7 @@ func main() {
 		return
 	}
 
-	pc := cloud.ConcretePointCloud{}
-	err = pc.ReadPointCloudFromFile(filename, verbose)
+	grid, err := esri.ReadGridFromFile(filename, verbose)
 	if err != nil {
 		log.Printf(err.Error())
 		return
@@ -81,19 +80,19 @@ func main() {
 
 	// If floor or ceiling not already set, set them from the data.
 	if !minHeightSet {
-		floor = pc.MinHeight() - 0.1
+		floor = grid.MinHeight() - 0.1
 	}
 
 	if !maxHeightSet {
-		ceiling = pc.MaxHeight() + 0.1
+		ceiling = grid.MaxHeight() + 0.1
 	}
 
 	log.Printf("creating image - floor %f ceiling %f\n", floor, ceiling)
-	img := image.NewRGBA(image.Rect(0, 0, pc.Nrows(), pc.Ncols()))
-	maxRow := pc.Nrows() - 1
+	img := image.NewRGBA(image.Rect(0, 0, grid.Nrows(), grid.Ncols()))
+	maxRow := grid.Nrows() - 1
 	for row := maxRow; row >= 0; row-- {
-		for col := 0; col < pc.Ncols(); col++ {
-			c := shade(floor, ceiling, pc.Height(row, col))
+		for col := 0; col < grid.Ncols(); col++ {
+			c := shade(floor, ceiling, grid.Height(row, col))
 			if verbose {
 				log.Printf("colouring cell[%d[%d] %d\n", row, col, c)
 			}
@@ -104,7 +103,7 @@ func main() {
 	log.Printf("encoding image")
 	err = png.Encode(out, img)
 
-	log.Printf("%d %d %f %f %d %d", pc.Nrows(), pc.Ncols(), pc.MinHeight(), pc.MaxHeight(), minShade, maxShade)
+	log.Printf("%d %d %f %f %d %d", grid.Nrows(), grid.Ncols(), grid.MinHeight(), grid.MaxHeight(), minShade, maxShade)
 }
 
 func shade(floor, ceiling, height float32) color.Color {
