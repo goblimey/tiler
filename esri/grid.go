@@ -9,8 +9,8 @@ import (
 	"strings"
 )
 
-// Grid defines a data structure that holds a 3D ESRI Grid read from a 
-// data file. The file contains a rectangular Grid of height values describing a surface 
+// Grid defines a data structure that holds a 3D ESRI Grid read from a
+// data file. The file contains a rectangular Grid of height values describing a surface
 // within some map.  ESRI Grid format files are used in mapping.
 //
 // ReadGridFromFile() reads a data file and fills in the grid object.
@@ -28,22 +28,22 @@ import (
 // 1000 1000 1000 1000
 // 1000 1000 1000 1000
 //
-// The file starts with six header lines defining the rest of the data.  ncols is the number 
-// of columns, nrows the number of rows.  xllcorner gives the x map reference of the bottom 
+// The file starts with six header lines defining the rest of the data.  ncols is the number
+// of columns, nrows the number of rows.  xllcorner gives the x map reference of the bottom
 // left corner of the grid, yllcorner the y map reference.  cellsize is the size of the cells
-// (the grid).  The NODATA value is used for points on the grid where the sensor couldn't 
+// (the grid).  The NODATA value is used for points on the grid where the sensor couldn't
 // figure out the height.
 //
-// The header lines are followed by the rows and columns of height data.  The values can be 
-// floating point numbers, here they are integers.  This example defines a four by four grid.  
-// The first row defines the top (most northern) line of the grid and the last row describes 
-// the bottom line.  In the real world the grid file would be much bigger, for example 
+// The header lines are followed by the rows and columns of height data.  The values can be
+// floating point numbers, here they are integers.  This example defines a four by four grid.
+// The first row defines the top (most northern) line of the grid and the last row describes
+// the bottom line.  In the real world the grid file would be much bigger, for example
 // 1,000 by 1,000 points across 1m cells, giving a 1Km square.
 //
 // Some of the values only make sense in the context of a local mapping system, for example
-// UK point clouds use Ordnance Survey map references for xllcorner and yllcorner, and the 
-// cell sizes are in metres.  
-
+// UK point clouds use Ordnance Survey map references for xllcorner and yllcorner, and the
+// cell sizes are in metres.
+//
 type Grid struct {
 	ncols        int
 	nrows        int
@@ -74,82 +74,82 @@ func ReadGridFromFile(filename string, verbose bool) (*Grid, error) {
 		return nil, err
 	}
 
-	g := Grid{}
+	grid := new(Grid)
 
 	r := bufio.NewReader(in)
 
 	lineNum := 0
 	fieldName := "ncols"
-	g.ncols, err = readIntFromHeader(r, fieldName, verbose)
+	grid.ncols, err = readIntFromHeader(r, fieldName, verbose)
 	if err != nil {
 		return nil, err
 	}
 	lineNum++
 	if verbose {
-		log.Printf("%s: %s %d", m, fieldName, g.ncols)
+		log.Printf("%s: %s %d", m, fieldName, grid.ncols)
 	}
 
 	fieldName = "nrows"
-	g.nrows, err = readIntFromHeader(r, fieldName, verbose)
+	grid.nrows, err = readIntFromHeader(r, fieldName, verbose)
 	if err != nil {
 		return nil, err
 	}
 	lineNum++
 	if verbose {
-		log.Printf("%s: %s %d", m, fieldName, g.nrows)
+		log.Printf("%s: %s %d", m, fieldName, grid.nrows)
 	}
 
-	g.height = make([][]float32, g.nrows)
+	grid.height = make([][]float32, grid.nrows)
 
-	for i := 0; i < g.nrows; i++ {
-		g.height[i] = make([]float32, g.ncols)
+	for i := 0; i < grid.nrows; i++ {
+		grid.height[i] = make([]float32, grid.ncols)
 	}
 
 	fieldName = "xllcorner"
-	g.xllcorner, err = readFloat32FromHeader(r, fieldName, verbose)
+	grid.xllcorner, err = readFloat32FromHeader(r, fieldName, verbose)
 	if err != nil {
 		return nil, err
 	}
 	lineNum++
 	if verbose {
-		log.Printf("%s: %s %f", m, fieldName, g.xllcorner)
+		log.Printf("%s: %s %f", m, fieldName, grid.xllcorner)
 	}
 
 	fieldName = "yllcorner"
-	g.yllcorner, err = readFloat32FromHeader(r, fieldName, verbose)
+	grid.yllcorner, err = readFloat32FromHeader(r, fieldName, verbose)
 	if err != nil {
 		return nil, err
 	}
 	lineNum++
 	if verbose {
-		log.Printf("%s: %s %f", m, fieldName, g.yllcorner)
+		log.Printf("%s: %s %f", m, fieldName, grid.yllcorner)
 	}
 
 	fieldName = "cellsize"
-	g.cellsize, err = readFloat32FromHeader(r, fieldName, verbose)
+	grid.cellsize, err = readFloat32FromHeader(r, fieldName, verbose)
 	if err != nil {
 		return nil, err
 	}
 	lineNum++
 	if verbose {
-		log.Printf("%s: %s %f", m, fieldName, g.cellsize)
+		log.Printf("%s: %s %f", m, fieldName, grid.cellsize)
 	}
 
 	fieldName = "NODATA_value"
-	g.noDataValue, err = readIntFromHeader(r, fieldName, verbose)
+	grid.noDataValue, err = readIntFromHeader(r, fieldName, verbose)
 	if err != nil {
 		return nil, err
 	}
 	lineNum++
 
-	log.Printf("NODATA_value %d", g.noDataValue)
+	log.Printf("NODATA_value %d", grid.noDataValue)
 
 	// Read nrows of lines each containing ncols floats, space separated.
-	log.Printf("%s: reading %d data lines", m, g.nrows)
+	log.Printf("%s: reading %d data lines", m, grid.nrows)
 
-	linesExpected := g.nrows + 6
+	linesExpected := grid.nrows + 6
 
-	for row := 0;; row++ {
+	for row := 0; ; row++ {
 		line, err := r.ReadString('\n')
 		if err != nil {
 			break
@@ -169,14 +169,14 @@ func ReadGridFromFile(filename string, verbose bool) (*Grid, error) {
 		}
 
 		numbers := strings.Split(line, " ")
-		if len(numbers) > g.ncols {
+		if len(numbers) > grid.ncols {
 			log.Printf("warning: line %d has too many columns - got %d expected %d\n",
-				lineNum, len(numbers), g.ncols)
+				lineNum, len(numbers), grid.ncols)
 			continue
 		}
-		if len(numbers) < g.ncols {
+		if len(numbers) < grid.ncols {
 			log.Printf("warning: line %d has too few columns - got %d expected %d\n",
-				lineNum, len(numbers), g.ncols)
+				lineNum, len(numbers), grid.ncols)
 			continue
 		}
 		for col := range numbers {
@@ -188,10 +188,10 @@ func ReadGridFromFile(filename string, verbose bool) (*Grid, error) {
 			}
 
 			// Set height, maxheight and minHeight
-			g.SetHeight(row, col, f)
+			grid.SetHeight(row, col, f)
 
 			if verbose {
-				log.Printf("height[%d][%d] %f", row, col, g.height[row][col])
+				log.Printf("height[%d][%d] %f", row, col, grid.height[row][col])
 			}
 		}
 	}
@@ -202,79 +202,94 @@ func ReadGridFromFile(filename string, verbose bool) (*Grid, error) {
 	}
 
 	if verbose {
-		log.Printf("maxHeight %f minheight %f", g.maxHeight, g.minHeight)
+		log.Printf("maxHeight %f minheight %f", grid.maxHeight, grid.minHeight)
 	}
 
-	return &g, nil
+	return grid, nil
 }
 
-
+// Ncols returns the number of columns in the Grid.
 func (g Grid) Ncols() int {
 	return g.ncols
 }
 
+// Nrows returns the number of rows in the Grid.
 func (g Grid) Nrows() int {
 	return g.nrows
 }
 
+// Xllcorner returns the x coordinate of the lower left corner of the Grid.
 func (g Grid) Xllcorner() float32 {
 	return g.xllcorner
 }
 
+// Yllcorner returns the y coordinate of the lower left corner of the Grid.
 func (g Grid) Yllcorner() float32 {
 	return g.yllcorner
 }
 
+// CellSize returns the size of the Grid cells in metres.
 func (g Grid) CellSize() float32 {
 	return g.cellsize
 }
 
+// NoDataValue returns the No Data value.
 func (g Grid) NoDataValue() int {
 	return g.noDataValue
 }
 
+// MaxHeight returns the largest height reading in the Grid.
 func (g Grid) MaxHeight() float32 {
 	return g.maxHeight
 }
 
+// MinHeight returns the smallest height reading in the Grid.
 func (g Grid) MinHeight() float32 {
 	return g.minHeight
 }
 
+// SetNCols sets the number of columns in the Grid.
 func (g *Grid) SetNCols(ncols int) {
 	g.ncols = ncols
 }
 
+// SetNRows sets the number of rows in the Grid.
 func (g *Grid) SetNRows(nrows int) {
 	g.nrows = nrows
 }
 
+// SetXllcorner sets the x coordinate of the lower left corner of the Grid.
 func (g *Grid) SetXllcorner(xllcorner float32) {
 	g.xllcorner = xllcorner
 }
 
+// SetYllcorner sets the y coordinate of the lower left corner of the Grid.
 func (g *Grid) SetYllcorner(yllcorner float32) {
 	g.yllcorner = yllcorner
 }
 
+// SetCellSize sets the size of the grid cells in metres.
 func (g *Grid) SetCellSize(cellsize float32) {
 	g.cellsize = cellsize
 }
 
+// SetNoData sets the No Data value.
 func (g *Grid) SetNoDataValue(noDataValue int) {
 	g.noDataValue = noDataValue
 }
 
-func (g Grid) Height(i, col int) float32 {
-	return g.height[i][col]
+// Height gets the height of cell (row, col).
+func (g Grid) Height(row, col int) float32 {
+	return g.height[row][col]
 }
 
+// SetHeight sets the height of cell (row, col).
 func (g *Grid) SetHeight(row, col int, height float32) {
 
 	if row >= g.nrows || col >= g.ncols {
 		log.Printf("SetHeight(%d,%d) - out of range", row, col)
 		return
-	} 
+	}
 	g.height[row][col] = height
 
 	if g.maxHeightSet {
@@ -349,11 +364,12 @@ func readFloat32FromHeader(r *bufio.Reader, fieldName string, verbose bool) (flo
 }
 
 func stripSpaces(s string) (string, error) {
+	// Remove spaces from the beginning and the end of the staring.
 	s = strings.TrimSpace(s)
+	// Reduce multiple adjacent spaces within the string to a single space.
 	re, err := regexp.Compile("  +")
 	if err != nil {
 		return s, err
 	}
-
 	return re.ReplaceAllLiteralString(s, " "), nil
 }
